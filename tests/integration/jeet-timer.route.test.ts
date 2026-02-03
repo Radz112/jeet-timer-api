@@ -62,6 +62,16 @@ function jsonResponse(data: unknown): Response {
   });
 }
 
+// ── Health check ──
+
+describe("GET /health", () => {
+  it("returns 200 with status ok", async () => {
+    const res = await request(app).get("/health");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ status: "ok" });
+  });
+});
+
 // ── GET tests (no external deps) ──
 
 describe("GET /api/v1/solana/jeet-timer", () => {

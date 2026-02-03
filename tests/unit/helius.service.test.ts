@@ -13,7 +13,7 @@ import { fetchSwapHistory } from "../../src/services/helius.service";
 import type { EnhancedTransaction } from "../../src/types";
 
 const WALLET = "DstRVJCPsgZHLnW6mFcasHPdemYvFVbdm3LFZNv3Egrp";
-const EXPECTED_URL = `https://api-mainnet.helius-rpc.com/v0/addresses/${WALLET}/transactions?api-key=test-api-key&type=SWAP&limit=50`;
+const EXPECTED_URL = `https://api-mainnet.helius-rpc.com/v0/addresses/${encodeURIComponent(WALLET)}/transactions?api-key=${encodeURIComponent("test-api-key")}&type=SWAP&limit=50`;
 
 function makeMockTx(overrides?: Partial<EnhancedTransaction>): EnhancedTransaction {
   return {
@@ -211,5 +211,34 @@ describe("helius.service — fetchSwapHistory", () => {
 
     await expect(fetchSwapHistory(WALLET)).rejects.toThrow();
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  // ── Response validation ──
+
+  it("throws when Helius returns a non-array response", async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse({ error: "not an array" }));
+
+    await expect(fetchSwapHistory(WALLET)).rejects.toThrow(
+      "Helius API returned unexpected data"
+    );
+  });
+
+  it("throws when Helius returns array with missing required fields", async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse([{ signature: "sig1" }]));
+
+    await expect(fetchSwapHistory(WALLET)).rejects.toThrow(
+      "Helius API returned unexpected data"
+    );
+  });
+
+  it("accepts transactions with extra fields (passthrough)", async () => {
+    const tx = {
+      ...makeMockTx(),
+      extraField: "should not cause validation error",
+    };
+    fetchSpy.mockResolvedValueOnce(jsonResponse([tx]));
+
+    const result = await fetchSwapHistory(WALLET);
+    expect(result).toHaveLength(1);
   });
 });

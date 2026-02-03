@@ -4,7 +4,11 @@ import jeetTimerRoute from "./routes/jeet-timer.route";
 
 const app = express();
 
-app.use(express.json());
+app.use(express.json({ limit: "1kb" }));
+
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok" });
+});
 
 app.use("/api/v1/solana/jeet-timer", jeetTimerRoute);
 
