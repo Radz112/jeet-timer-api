@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 vi.mock("../../src/config/env", () => ({
   env: {
     HELIUS_API_KEY: "test-api-key",
-    CREATOR_WALLET_ADDRESS: "TestCreatorWallet",
     PAY_TO_ADDRESS: "TestPayTo",
     PORT: 3000,
   },

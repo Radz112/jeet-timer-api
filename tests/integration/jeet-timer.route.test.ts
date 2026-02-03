@@ -5,7 +5,6 @@ import type { EnhancedTransaction } from "../../src/types";
 vi.mock("../../src/config/env", () => ({
   env: {
     HELIUS_API_KEY: "test-key",
-    CREATOR_WALLET_ADDRESS: "CreatorWalletAddr11111111111111111",
     PAY_TO_ADDRESS: "PayToAddr111111111111111111111111111",
     PORT: 0,
   },
@@ -198,7 +197,7 @@ describe("POST /api/v1/solana/jeet-timer — full pipeline", () => {
     expect(buf[0]).toBe(0x89); // PNG magic byte
 
     // Verify creator_wallet from env
-    expect(data.creator_wallet).toBe("CreatorWalletAddr11111111111111111");
+    expect(data.creator_wallet).toBe("PayToAddr111111111111111111111111111");
 
     // Verify trade_pairs come from real analysis
     expect(data.trade_pairs).toHaveLength(1);

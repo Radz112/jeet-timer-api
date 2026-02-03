@@ -72,7 +72,7 @@ router.post("/", async (req: Request, res: Response) => {
         total_trades_analyzed: analysis.total_trades_analyzed,
         unmatched_buys: analysis.unmatched_buys,
         image_base64: image,
-        creator_wallet: env.CREATOR_WALLET_ADDRESS,
+        creator_wallet: env.PAY_TO_ADDRESS,
         trade_pairs: analysis.trade_pairs,
       },
     });

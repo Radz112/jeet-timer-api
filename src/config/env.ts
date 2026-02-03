@@ -5,7 +5,6 @@ dotenv.config();
 
 const envSchema = z.object({
   HELIUS_API_KEY: z.string().min(1, "HELIUS_API_KEY is required"),
-  CREATOR_WALLET_ADDRESS: z.string().min(1, "CREATOR_WALLET_ADDRESS is required"),
   PAY_TO_ADDRESS: z.string().min(1, "PAY_TO_ADDRESS is required"),
   PORT: z
     .string()
