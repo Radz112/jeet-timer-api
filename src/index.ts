@@ -17,8 +17,11 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
-app.listen(env.PORT, () => {
-  console.log(`Jeet Timer API running on port ${env.PORT}`);
-});
+// Only start listening when this file is run directly, not when imported for tests
+if (process.env["NODE_ENV"] !== "test") {
+  app.listen(env.PORT, () => {
+    console.log(`Jeet Timer API running on port ${env.PORT}`);
+  });
+}
 
 export default app;

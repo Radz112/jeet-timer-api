@@ -1,6 +1,10 @@
 import { Router, Request, Response } from "express";
 import { apix402JeetTimerSchema } from "../utils/validators";
 import { env } from "../config/env";
+import { fetchSwapHistory } from "../services/helius.service";
+import { analyzeHoldTimes } from "../services/history.service";
+import { generateSpeedometer } from "../services/canvas.service";
+import { getJeetLevel, formatHoldTime } from "../utils/jeet-levels";
 
 const router = Router();
 
@@ -34,7 +38,7 @@ router.get("/", (_req: Request, res: Response) => {
   });
 });
 
-router.post("/", (req: Request, res: Response) => {
+router.post("/", async (req: Request, res: Response) => {
   const parsed = apix402JeetTimerSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -50,32 +54,36 @@ router.post("/", (req: Request, res: Response) => {
 
   const { wallet } = parsed.data.body;
 
-  // Stub mock response — will be replaced in Phase 2+
-  res.json({
-    status: "success",
-    data: {
-      wallet,
-      avg_hold_seconds: 260,
-      avg_hold_time: "4m 20s",
-      jeet_level: "Speed Jeet",
-      fastest_jeet: 12,
-      fastest_exit: "12s",
-      total_trades_analyzed: 1,
-      unmatched_buys: 0,
-      image_base64: "",
-      creator_wallet: env.CREATOR_WALLET_ADDRESS,
-      trade_pairs: [
-        {
-          mint: "So11111111111111111111111111111111111111112",
-          buyTimestamp: 1700000000,
-          sellTimestamp: 1700000260,
-          holdSeconds: 260,
-          buySignature: "mock_buy_sig",
-          sellSignature: "mock_sell_sig",
-        },
-      ],
-    },
-  });
+  try {
+    const transactions = await fetchSwapHistory(wallet);
+    const analysis = analyzeHoldTimes(transactions);
+    const jeetLevel = getJeetLevel(analysis.avg_hold_seconds);
+    const image = await generateSpeedometer(analysis, wallet);
+
+    res.json({
+      status: "success",
+      data: {
+        wallet,
+        avg_hold_seconds: analysis.avg_hold_seconds,
+        avg_hold_time: formatHoldTime(analysis.avg_hold_seconds),
+        jeet_level: `${jeetLevel.emoji} ${jeetLevel.level}`,
+        fastest_jeet: analysis.fastest_jeet,
+        fastest_exit: formatHoldTime(analysis.fastest_jeet),
+        total_trades_analyzed: analysis.total_trades_analyzed,
+        unmatched_buys: analysis.unmatched_buys,
+        image_base64: image,
+        creator_wallet: env.CREATOR_WALLET_ADDRESS,
+        trade_pairs: analysis.trade_pairs,
+      },
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error(`Jeet Timer error for ${wallet}:`, message);
+    res.status(502).json({
+      status: "error",
+      message: `Failed to analyze wallet: ${message}`,
+    });
+  }
 });
 
 export default router;
