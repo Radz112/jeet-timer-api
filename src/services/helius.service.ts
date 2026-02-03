@@ -63,7 +63,7 @@ export async function fetchSwapHistory(
       throw new Error(`Helius API error: ${response.status} ${response.statusText}`);
     }
 
-    const data: EnhancedTransaction[] = await response.json();
+    const data = (await response.json()) as EnhancedTransaction[];
     return data;
   }
 
