@@ -1,18 +1,5 @@
-// ── APIX402 request wrapper ──
-
-export interface APIX402Body<T> {
-  body: T;
-}
-
-export interface JeetTimerRequest {
-  wallet: string;
-}
-
-// ── Trade analysis types ──
-
 export interface TradePair {
   mint: string;
-  mintSymbol?: string;
   buyTimestamp: number;
   sellTimestamp: number;
   holdSeconds: number;

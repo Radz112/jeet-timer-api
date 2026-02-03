@@ -7,7 +7,6 @@ const STABLES = new Set([
 ]);
 
 interface MintEvent {
-  mint: string;
   type: "BUY" | "SELL";
   timestamp: number;
   signature: string;
@@ -16,60 +15,42 @@ interface MintEvent {
 export function analyzeHoldTimes(
   transactions: EnhancedTransaction[]
 ): JeetAnalysis {
-  // Sort ascending by timestamp
   const sorted = [...transactions].sort((a, b) => a.timestamp - b.timestamp);
 
-  // Extract buy/sell events per mint
-  const events: MintEvent[] = [];
+  // Group buy/sell events by mint in a single pass
+  const byMint = new Map<string, MintEvent[]>();
 
   for (const tx of sorted) {
     const swap = tx.events?.swap;
     if (!swap) continue;
 
-    // tokenOutputs = tokens the user RECEIVED → BUY signals
     for (const output of swap.tokenOutputs) {
       if (!STABLES.has(output.mint)) {
-        events.push({
-          mint: output.mint,
-          type: "BUY",
-          timestamp: tx.timestamp,
-          signature: tx.signature,
-        });
+        const list = byMint.get(output.mint) ?? [];
+        list.push({ type: "BUY", timestamp: tx.timestamp, signature: tx.signature });
+        byMint.set(output.mint, list);
       }
     }
 
-    // tokenInputs = tokens the user SENT → SELL signals
     for (const input of swap.tokenInputs) {
       if (!STABLES.has(input.mint)) {
-        events.push({
-          mint: input.mint,
-          type: "SELL",
-          timestamp: tx.timestamp,
-          signature: tx.signature,
-        });
+        const list = byMint.get(input.mint) ?? [];
+        list.push({ type: "SELL", timestamp: tx.timestamp, signature: tx.signature });
+        byMint.set(input.mint, list);
       }
     }
-  }
-
-  // Group by mint
-  const byMint = new Map<string, MintEvent[]>();
-  for (const evt of events) {
-    const list = byMint.get(evt.mint) || [];
-    list.push(evt);
-    byMint.set(evt.mint, list);
   }
 
   // FIFO pair matching per mint
   const tradePairs: TradePair[] = [];
   let unmatchedBuys = 0;
 
-  for (const [mint, mintEvents] of byMint) {
-    const buys = mintEvents.filter((e) => e.type === "BUY");
-    const sells = mintEvents.filter((e) => e.type === "SELL");
+  for (const [mint, events] of byMint) {
+    const buys = events.filter((e) => e.type === "BUY");
+    const sells = events.filter((e) => e.type === "SELL");
 
     let sellIdx = 0;
     for (const buy of buys) {
-      // Find the next sell that occurs at or after the buy
       while (sellIdx < sells.length && sells[sellIdx]!.timestamp < buy.timestamp) {
         sellIdx++;
       }
@@ -90,27 +71,19 @@ export function analyzeHoldTimes(
     }
   }
 
-  const totalPairs = tradePairs.length;
-
-  if (totalPairs === 0) {
-    return {
-      trade_pairs: [],
-      avg_hold_seconds: 0,
-      fastest_jeet: 0,
-      total_trades_analyzed: 0,
-      unmatched_buys: unmatchedBuys,
-    };
-  }
-
-  const avgHoldSeconds =
-    tradePairs.reduce((sum, p) => sum + p.holdSeconds, 0) / totalPairs;
-  const fastestJeet = Math.min(...tradePairs.map((p) => p.holdSeconds));
+  const total = tradePairs.length;
+  const avgHold = total > 0
+    ? tradePairs.reduce((sum, p) => sum + p.holdSeconds, 0) / total
+    : 0;
+  const fastest = total > 0
+    ? Math.min(...tradePairs.map((p) => p.holdSeconds))
+    : 0;
 
   return {
     trade_pairs: tradePairs,
-    avg_hold_seconds: avgHoldSeconds,
-    fastest_jeet: fastestJeet,
-    total_trades_analyzed: totalPairs,
+    avg_hold_seconds: avgHold,
+    fastest_jeet: fastest,
+    total_trades_analyzed: total,
     unmatched_buys: unmatchedBuys,
   };
 }
